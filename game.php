@@ -96,6 +96,12 @@ class HelpTable extends ResultGame
 }
 $arg = array_slice($argv, 1);
 $countArg = count($arg);
+
+function get_array_duplicates( $arg ){
+	return array_diff_assoc( $arg, array_unique( $arg ) );
+}
+$duplicates = get_array_duplicates( $arg );
+
 if ($countArg % 2 === 1 && $countArg >= 3) {
     $hma = new HMAC(sodium_crypto_secretbox_keygen(), $arg);
     echo "HMAC:\n" . $hma->hmac() . "\n";
@@ -129,5 +135,5 @@ if ($countArg % 2 === 1 && $countArg >= 3) {
         exit('');
     }
 } else {
-    echo 'There must be an odd number of arguments.';
+    echo 'Incorrect input values.';
 }
