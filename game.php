@@ -1,3 +1,4 @@
+
 <?php
 
 require 'vendor/autoload.php';
@@ -6,23 +7,17 @@ use LucidFrame\Console\ConsoleTable;
 
 class HMAC
 {
-    public function __construct(public string $key, public array $arg)
+    public static function hmac(string $key, array $arg)
     {
-        $this->key = $key;
-        $this->arg = $arg;
-    }
-    public function hmac()
-    {
-        $strArg = implode(' ', $this->arg);
-        return hash_hmac('sha3-256', $strArg, $this->key);
+        $strArg = implode(' ', $arg);
+        return hash_hmac('sha3-256', $strArg, $key);
     }
 }
 
 class Menu
 {
-    public function __construct(public array $arg)
+    public function __construct(private array $arg)
     {
-        $this->arg = $arg;
     }
     public function getList()
     {
@@ -37,17 +32,11 @@ class Menu
 
 class ResultGame
 {
-    public function __construct(public int $userMove, public int $computerMove, public int $numberMoves)
+    public static function choice( int $userMove, int $computerMove, int $numberMoves)
     {
-        $this->userMove = $userMove;
-        $this->computerMove = $computerMove;
-        $this->numberMoves = $numberMoves;
-    }
-    public function choice()
-    {
-        $n = floor($this->numberMoves / 2);
-        $result = (($this->userMove - $this->computerMove + $n + $this->numberMoves)
-            % $this->numberMoves - $n);
+        $n = floor($numberMoves / 2);
+        $result = (($userMove - $computerMove + $n + $numberMoves)
+            % $numberMoves - $n);
         if ($result > 0) {
             return 'Win';
         } elseif ($result == 0) {
@@ -60,10 +49,8 @@ class ResultGame
 
 class HelpTable extends ResultGame
 {
-    public function __construct(public array $arg, public int $countArg)
+    public function __construct(private array $arg, private int $countArg)
     {
-        $this->arg = $arg;
-        $this->countArg = $countArg;
     }
 
     public function create()
@@ -79,8 +66,7 @@ class HelpTable extends ResultGame
             $columns = [];
             $columns[] = $this->arg[$userMove];
             for ($computerMove = 0; $computerMove <= $this->countArg - 1; $computerMove++) {
-                $result = new ResultGame($userMove, $computerMove, $this->countArg);
-                $result = $result->choice();
+                $result =  ResultGame::choice($userMove, $computerMove, $this->countArg);
                 $columns[] = $result;
             }
 
@@ -94,17 +80,18 @@ class HelpTable extends ResultGame
         return $table;
     }
 }
+
 $arg = array_slice($argv, 1);
 $countArg = count($arg);
-
 function get_array_duplicates( $arg ){
 	return array_diff_assoc( $arg, array_unique( $arg ) );
 }
 $duplicates = get_array_duplicates( $arg );
 
-if ($countArg % 2 === 1 && $countArg >= 3) {
-    $hma = new HMAC(sodium_crypto_secretbox_keygen(), $arg);
-    echo "HMAC:\n" . $hma->hmac() . "\n";
+if ($countArg % 2 === 1 && $countArg >= 3 && $duplicates === []) {
+    $hashKey = random_bytes(32);
+
+    echo "HMAC:\n" . HMAC::hmac($hashKey, $arg) . "\n";
 
     $list = new Menu($arg);
     echo 'Available moves:' . "\n" . $list->getList() . "\n";
@@ -119,14 +106,15 @@ if ($countArg % 2 === 1 && $countArg >= 3) {
         $computerMove = $arg[$randomComputerMove - 1];
         echo 'Computer move: ' . $computerMove . "\n";
 
-        $resultGame = new ResultGame($userMove, $randomComputerMove, $countArg);
-        if ($resultGame->choice() === 'Draw') {
+        $resultGame = ResultGame::choice($userMove, $randomComputerMove, $countArg);
+
+        if ($resultGame === 'Draw') {
             echo 'Draw' . "\n";
         } else {
-            echo 'You ' . $resultGame->choice() . "\n";
+            echo 'You ' . $resultGame . "\n";
         }
 
-        echo 'HMAC key:' . "\n" . bin2hex($hma->key);
+        echo 'HMAC key:' . "\n" . bin2hex($hashKey) . "\n";
     } elseif ($userMove == '?') {
         $table = new HelpTable($arg, $countArg);
         echo 'Information about game:' . "\n";
@@ -137,3 +125,4 @@ if ($countArg % 2 === 1 && $countArg >= 3) {
 } else {
     echo 'Incorrect input values.';
 }
+
